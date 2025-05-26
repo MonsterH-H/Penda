@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#gradient)" />
+  
+  <!-- Letter P -->
+  <path d="M170 150C170 144.477 174.477 140 180 140H256C283.614 140 306 162.386 306 190C306 217.614 283.614 240 256 240H200V330C200 335.523 195.523 340 190 340C184.477 340 180 335.523 180 330V150Z" fill="white"/>
+  
+  <!-- Hollow out the P -->
+  <path d="M200 160V220H256C272.569 220 286 206.569 286 190C286 173.431 272.569 160 256 160H200Z" fill="url(#gradient)"/>
+  
+  <!-- Data Visualization Elements -->
+  <path d="M330 180L370 180" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M330 210L370 210" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M330 240L370 240" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M330 270L370 270" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M330 300L370 300" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M330 330L370 330" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  
+  <!-- Circuit Board Elements -->
+  <circle cx="150" cy="270" r="10" fill="white"/>
+  <circle cx="150" cy="330" r="10" fill="white"/>
+  <path d="M150 270L150 330" stroke="white" stroke-width="6"/>
+  <path d="M150 330L200 330" stroke="white" stroke-width="6"/>
+  <path d="M150 270L120 270" stroke="white" stroke-width="6"/>
+  
+  <!-- Gradient Definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#0EA5E9"/>
+    </linearGradient>
+  </defs>
+</svg>

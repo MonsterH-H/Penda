@@ -1,40 +1,58 @@
 
-import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { useRealTimeData } from '@/hooks/data/useRealTimeData';
+import { API_CONFIG } from '@/config/api.config';
 
 interface DataPoint {
   time: string;
+  timestamp: string;
+  machine: string;
   temperature: number;
   pressure: number;
   vibration: number;
+  rotation: number;
+  current: number;
+  voltage: number;
   mlScore: number;
 }
 
-export const RealTimeCharts = () => {
-  const [data, setData] = useState<DataPoint[]>([]);
+interface RealTimeChartsProps {
+  machineId?: string;
+}
 
-  useEffect(() => {
-    const generateDataPoint = (): DataPoint => ({
-      time: new Date().toLocaleTimeString(),
-      temperature: 65 + Math.random() * 15,
-      pressure: 2.0 + Math.random() * 1.0,
-      vibration: 0.5 + Math.random() * 0.8,
-      mlScore: Math.random() * 100
-    });
+export const RealTimeCharts = ({ machineId }: RealTimeChartsProps = {}) => {
+  // Utiliser le hook pour récupérer les données en temps réel
+  const { data, isLoading, error } = useRealTimeData({
+    machineId,
+    refreshInterval: 5000, // 5 secondes par défaut
+    enabled: true
+  });
 
-    // Initialiser avec quelques points
-    const initialData = Array.from({ length: 10 }, generateDataPoint);
-    setData(initialData);
-
-    const interval = setInterval(() => {
-      setData(prevData => {
-        const newData = [...prevData.slice(-9), generateDataPoint()];
-        return newData;
-      });
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // Afficher un indicateur de chargement si nécessaire
+  if (isLoading && data.length === 0) {
+    return (
+      <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 shadow-lg border border-gray-200/50">
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">Données Temps Réel</h3>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Chargement des données...</span>
+        </div>
+      </div>
+    );
+  }
+  
+  // Afficher un message d'erreur si nécessaire
+  if (error) {
+    return (
+      <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 shadow-lg border border-gray-200/50">
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">Données Temps Réel</h3>
+        <div className="p-4 bg-red-50 text-red-600 rounded-lg">
+          <p>Erreur lors du chargement des données: {error}</p>
+          <p className="text-sm mt-2">Des données de démonstration sont affichées à la place.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 shadow-lg border border-gray-200/50">

@@ -76,9 +76,11 @@ const Historique = () => {
             <h3 className="text-lg font-semibold text-gray-900">Tendances Historiques</h3>
           </div>
           <HistoricalCharts 
-            data={data} 
+            startDate={dateRange.start} 
+            endDate={dateRange.end}
+            machineId={selectedMachines.includes('all') ? undefined : selectedMachines[0]} 
             selectedMetrics={selectedMetrics}
-            isLoading={isLoading}
+            aggregation='none'
           />
         </div>
 

@@ -1,18 +1,70 @@
-
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useHistoricalData } from '@/hooks/data/useHistoricalData';
+import { useState, useEffect } from 'react';
 
 interface HistoricalChartsProps {
-  data: any[];
+  startDate: Date;
+  endDate: Date;
+  machineId?: string;
   selectedMetrics: string[];
-  isLoading: boolean;
+  aggregation?: 'none' | 'hourly' | 'daily' | 'weekly';
 }
 
-export const HistoricalCharts = ({ data, selectedMetrics, isLoading }: HistoricalChartsProps) => {
+export const HistoricalCharts = ({ 
+  startDate, 
+  endDate, 
+  machineId, 
+  selectedMetrics, 
+  aggregation = 'none' 
+}: HistoricalChartsProps) => {
+  // Utiliser le hook pour récupérer les données historiques
+  const { data, isLoading, error } = useHistoricalData({
+    startDate,
+    endDate,
+    machineId,
+    metrics: selectedMetrics,
+    aggregation
+  });
+
+  // Afficher un indicateur de chargement si nécessaire
   if (isLoading) {
     return (
       <div className="h-96 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <span className="ml-2 text-gray-600">Chargement des données...</span>
+      </div>
+    );
+  }
+  
+  // Afficher un message d'erreur si nécessaire
+  if (error) {
+    // Déterminer le message d'erreur à afficher
+    let errorMessage = 'Une erreur inconnue est survenue';
+    
+    if (typeof error === 'string') {
+      errorMessage = error;
+    } else if (error && typeof error === 'object' && 'message' in error) {
+      errorMessage = error.message as string;
+    }
+    
+    return (
+      <div className="h-96 flex items-center justify-center">
+        <div className="p-4 bg-red-50 text-red-600 rounded-lg max-w-md">
+          <p className="font-medium">Erreur lors du chargement des données</p>
+          <p className="text-sm mt-1">{errorMessage}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Afficher un message si aucune donnée n'est disponible
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-96 flex items-center justify-center">
+        <div className="p-4 bg-amber-50 text-amber-600 rounded-lg max-w-md">
+          <p className="font-medium">Aucune donnée disponible</p>
+          <p className="text-sm mt-1">Essayez de modifier les filtres ou la période sélectionnée.</p>
+        </div>
       </div>
     );
   }

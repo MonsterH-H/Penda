@@ -1,74 +1,84 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '@/components/ui/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMLModel } from '@/contexts/MLModelContext';
-import { Button } from '@/components/ui/button';
-import { DataService } from '@/services/DataService';
-import { AnomalyPrediction } from '@/types/prediction';
-import { useToast } from '@/hooks/use-toast';
-import { PredictionVisualizationV2 } from '@/components/prediction/PredictionVisualizationV2';
-import { Database, FileDown, RefreshCw, Check } from 'lucide-react';
+import { Check, Database, FileDown, LineChart, RefreshCw } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
+import { AnomalyPrediction, MLModelStatus } from '@/types/prediction';
 
-// Composants modulaires
-import { FileUploader } from '@/components/data/FileUploader';
-import { DataFilters } from '@/components/data/DataFilters';
-import { DataExporter } from '@/components/data/DataExporter';
+// Nouveaux imports pour les composants de gestion des données réelles
+import { DataImportForm } from '@/components/data/DataImportForm';
+import { DataVisualization } from '@/components/data/DataVisualization';
+import { useMLModelStatus } from '@/hooks/data/useMLModel';
+import { useMachineStatus } from '@/hooks/data/useMachineStatus';
+import { TimestampedSensorData } from '@/api/sensorDataService';
 
-const DataManagement = () => {
+// Type pour les résultats d'importation
+interface ImportResult {
+  success: boolean;
+  message: string;
+  data?: TimestampedSensorData[];
+}
+
+export default function DataManagement() {
   const { toast } = useToast();
-  const { predictions: modelPredictions, metrics, trainModel } = useMLModel();
-  const [activeTab, setActiveTab] = useState('upload');
+  
+  // États pour les onglets et le chargement
+  const [activeTab, setActiveTab] = useState('import');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // États pour les prédictions et filtres
   const [predictions, setPredictions] = useState<AnomalyPrediction[]>([]);
   const [filteredPredictions, setFilteredPredictions] = useState<AnomalyPrediction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMachine, setSelectedMachine] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: undefined,
-    to: undefined
-  });
-  const [uploadedFiles, setUploadedFiles] = useState<{name: string, size: number, date: Date, type: string}[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
-  // Charger les prédictions au démarrage
-  useEffect(() => {
-    loadPredictions();
-  }, []);
+  // États pour les données importées
+  const [importedData, setImportedData] = useState<TimestampedSensorData[]>([]);
+  
+  // Utiliser les hooks personnalisés pour accéder aux données réelles
+  const { modelStatus, trainModel, isTraining, error: modelError } = useMLModelStatus();
+  const { machines, isLoading: machinesLoading, error: machinesError } = useMachineStatus();
   
   // Filtrer les prédictions quand les filtres changent
   useEffect(() => {
     filterPredictions();
   }, [predictions, searchTerm, selectedMachine, dateRange]);
   
-  // Charger les prédictions depuis le service
-  const loadPredictions = () => {
-    setIsLoading(true);
-    try {
-      // Récupérer les prédictions stockées
-      const storedPredictions = DataService.getStoredPredictions();
-      setPredictions(storedPredictions);
-      
-      // Simuler des fichiers téléchargés
-      if (uploadedFiles.length === 0) {
-        setUploadedFiles([
-          { name: 'donnees_machine_A.csv', size: 45678, date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), type: 'csv' },
-          { name: 'capteurs_usine_B.json', size: 128456, date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), type: 'json' }
-        ]);
-      }
+    // Gérer l'importation de données réussie
+  const handleImportComplete = (result: ImportResult) => {    
+    if (result.success && result.data) {
+      setImportedData(result.data);
       
       toast({
-        title: "Données chargées",
-        description: `${storedPredictions.length} prédictions récupérées`
+        title: "Importation réussie",
+        description: result.message,
       });
-    } catch (error) {
-      console.error('Erreur lors du chargement des prédictions:', error);
+    } else {
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les prédictions",
+        title: "Erreur d'importation",
+        description: result.message,
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
+    }
+  };
+  
+    // Gérer l'entraînement du modèle réussi
+  const handleTrainComplete = (result: ImportResult) => {
+    if (result.success) {
+      toast({
+        title: "Entraînement réussi",
+        description: result.message,
+      });
+    } else {
+      toast({
+        title: "Erreur d'entraînement",
+        description: result.message,
+        variant: "destructive"
+      });
     }
   };
   
@@ -82,11 +92,11 @@ const DataManagement = () => {
     }
     
     // Filtre par date
-    if (dateRange.from) {
+    if (dateRange?.from) {
       filtered = filtered.filter(p => p.timestamp >= dateRange.from!);
     }
     
-    if (dateRange.to) {
+    if (dateRange?.to) {
       const endDate = new Date(dateRange.to);
       endDate.setHours(23, 59, 59, 999);
       filtered = filtered.filter(p => p.timestamp <= endDate);
@@ -107,69 +117,75 @@ const DataManagement = () => {
 
   // Exporter les données au format CSV
   const handleExportData = () => {
-    if (filteredPredictions.length === 0) return;
-    
-    // Utiliser le service pour exporter les données
-    DataService.exportPredictionsToCSV(filteredPredictions);
+    // Utiliser l'adaptateur de données pour exporter les prédictions
+    const blob = new Blob([generateCSV(filteredPredictions)], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `penda_predictions_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     
     toast({
-      title: "Export réussi",
+      title: "Données exportées",
       description: `${filteredPredictions.length} prédictions exportées au format CSV`
     });
   };
   
-  // Gérer le téléversement d'un nouveau fichier
-  const handleFileUpload = (file: File) => {
-    // Ajouter le fichier à la liste des fichiers téléversés
-    setUploadedFiles(prev => [
-      {
-        name: file.name,
-        size: file.size,
-        date: new Date(),
-        type: file.name.split('.').pop() || ''
-      },
-      ...prev
+  // Générer le contenu CSV pour l'export
+  const generateCSV = (data: AnomalyPrediction[]): string => {
+    // Entêtes CSV
+    const headers = [
+      'ID',
+      'Date',
+      'Machine',
+      'Score de risque',
+      'Erreur de reconstruction',
+      'Sévérité',
+      'Facteurs',
+      'Température',
+      'Pression',
+      'Vibration',
+      'Rotation',
+      'Courant',
+      'Tension'
+    ];
+    
+    // Lignes de données
+    const rows = data.map(p => [
+      p.id,
+      p.timestamp.toISOString(),
+      p.machine,
+      p.riskScore.toFixed(2),
+      p.reconstructionError.toFixed(4),
+      p.severity,
+      p.factors.join('; '),
+      p.rawData.temperature.toFixed(2),
+      p.rawData.pressure.toFixed(2),
+      p.rawData.vibration.toFixed(2),
+      p.rawData.rotation.toFixed(2),
+      p.rawData.current.toFixed(2),
+      p.rawData.voltage.toFixed(2)
     ]);
     
-    toast({
-      title: "Fichier téléversé",
-      description: `${file.name} a été téléversé avec succès`
-    });
-    
-    // Simuler un traitement des données
-    setTimeout(() => {
-      // Générer quelques prédictions aléatoires basées sur le fichier
-      const newPredictions = generateSamplePredictions(5, file.name.includes('machine_A') ? 'Machine A' : 'Machine B');
-      
-      // Ajouter les nouvelles prédictions
-      newPredictions.forEach(p => DataService.savePrediction(p));
-      
-      // Recharger les prédictions
-      loadPredictions();
-      
-      toast({
-        title: "Traitement terminé",
-        description: `${newPredictions.length} nouvelles prédictions générées`
-      });
-    }, 2000);
+    // Construire le CSV complet
+    return [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
   };
-  
-  // Supprimer un fichier téléversé
-  const handleDeleteFile = (fileName: string) => {
-    setUploadedFiles(prev => prev.filter(f => f.name !== fileName));
+
+  // Réinitialiser tous les filtres
+  const resetFilters = () => {
+    setSearchTerm('');
+    setSelectedMachine('all');
+    setDateRange(undefined);
     
     toast({
-      title: "Fichier supprimé",
-      description: `${fileName} a été supprimé`
+      title: "Filtres réinitialisés",
+      description: "Tous les filtres ont été réinitialisés"
     });
-  };
-  
-  // Entraîner le modèle avec les données actuelles
-  const handleTrainModel = () => {
-    toast({
-      title: "Entraînement démarré",
-      description: "Le modèle est en cours d'entraînement avec les données téléversées"
-    }); 
   };
   
   // Générer des prédictions d'exemple
@@ -227,18 +243,32 @@ const DataManagement = () => {
     return predictions;
   };
 
-  // Réinitialiser tous les filtres
-  const resetFilters = () => {
-    setSearchTerm('');
-    setSelectedMachine('all');
-    setDateRange({ from: undefined, to: undefined });
-  };
-  
-  // Exporter les métriques du modèle
+    // Exporter les métriques du modèle
   const handleExportMetrics = () => {
+    if (!modelStatus) {
+      toast({
+        title: "Erreur",
+        description: "Aucune métrique de modèle disponible",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const modelData = {
-      metrics,
-      lastUpdated: new Date().toISOString(),
+      metrics: {
+        accuracy: modelStatus.accuracy,
+        precision: modelStatus.precision,
+        recall: modelStatus.recall,
+        f1Score: modelStatus.f1Score,
+        lastTrained: modelStatus.lastTrained.toISOString()
+      },
+      predictions: {
+        total: predictions.length,
+        critical: predictions.filter(p => p.severity === 'critical').length,
+        high: predictions.filter(p => p.severity === 'high').length,
+        medium: predictions.filter(p => p.severity === 'medium').length,
+        low: predictions.filter(p => p.severity === 'low').length,
+      },
       modelName: 'Penda Autoencoder v1.0'
     };
     
@@ -263,61 +293,46 @@ const DataManagement = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Gestion des données</h1>
-            <p className="text-gray-600">Importez, visualisez et gérez vos données industrielles</p>
+            <p className="text-gray-600">Importez, visualisez et gérez vos données industrielles réelles</p>
           </div>
           <Button 
-            onClick={loadPredictions}
+            onClick={resetFilters}
             variant="outline"
             className="mt-2 sm:mt-0"
-            disabled={isLoading}
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualiser
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Réinitialiser les filtres
           </Button>
         </div>
 
-        <Tabs defaultValue="upload" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue="import" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-3 w-full max-w-md mb-6">
-            <TabsTrigger value="upload" className="flex items-center space-x-2">
+            <TabsTrigger value="import" className="flex items-center space-x-2">
               <Database className="w-4 h-4" />
               <span>Import</span>
             </TabsTrigger>
-            {/* Historique SUPPRIMÉ */}
+            <TabsTrigger value="visualize" className="flex items-center space-x-2">
+              <LineChart className="w-4 h-4" />
+              <span>Visualisation</span>
+            </TabsTrigger>
             <TabsTrigger value="export" className="flex items-center space-x-2">
               <FileDown className="w-4 h-4" />
               <span>Export</span>
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="upload" className="space-y-6">
-            <Card className="bg-white/80 backdrop-blur-md shadow-lg border border-gray-200/50">
-              <CardHeader>
-                <CardTitle>Téléverser des données</CardTitle>
-                <CardDescription>
-                  Importez vos données industrielles pour entraîner le modèle ou générer des prédictions
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <FileUploader
-                  onFileUpload={handleFileUpload}
-                  uploadedFiles={uploadedFiles}
-                  onDeleteFile={handleDeleteFile}
-                />
-                
-                {uploadedFiles.length > 0 && (
-                  <Button 
-                    onClick={handleTrainModel}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    Entraîner le modèle avec ces données
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="import" className="space-y-6">
+            {/* Nouveau composant d'importation de données réelles */}
+            <DataImportForm 
+              onImportComplete={handleImportComplete}
+              onTrainComplete={handleTrainComplete}
+            />
           </TabsContent>
           
-          {/* Historique SUPPRIMÉ */}
+          <TabsContent value="visualize" className="space-y-6">
+            {/* Nouveau composant de visualisation des données réelles */}
+            <DataVisualization data={importedData} />
+          </TabsContent>
           
           <TabsContent value="export" className="space-y-6">
             <Card className="bg-white/80 backdrop-blur-md shadow-lg border border-gray-200/50">
@@ -328,12 +343,45 @@ const DataManagement = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <DataExporter
-                  onExportData={handleExportData}
-                  predictionsCount={filteredPredictions.length}
-                  metrics={metrics}
-                  onExportMetrics={handleExportMetrics}
-                />
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Prédictions</h3>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          {filteredPredictions.length} prédictions disponibles
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleExportData}
+                        disabled={filteredPredictions.length === 0}
+                        size="sm"
+                      >
+                        <FileDown className="w-4 h-4 mr-2" />
+                        Exporter en CSV
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Métriques du modèle</h3>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">
+                          {modelStatus ? `Dernier entraînement: ${modelStatus.lastTrained.toLocaleDateString()}` : 'Aucune métrique disponible'}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleExportMetrics}
+                        disabled={!modelStatus}
+                        size="sm"
+                      >
+                        <FileDown className="w-4 h-4 mr-2" />
+                        Exporter en JSON
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -343,4 +391,4 @@ const DataManagement = () => {
   );
 };
 
-export default DataManagement;
+// Le composant est déjà exporté en tant que default au début du fichier

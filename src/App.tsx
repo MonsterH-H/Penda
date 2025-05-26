@@ -14,6 +14,7 @@ import DataManagement from "./pages/DataManagement";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MLModelProvider } from "./contexts/MLModelContext";
+import { DataProvider } from "./contexts/DataContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient({
@@ -30,7 +31,8 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <MLModelProvider>
-        <TooltipProvider>
+        <DataProvider>
+          <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -76,6 +78,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        </DataProvider>
       </MLModelProvider>
     </AuthProvider>
   </QueryClientProvider>

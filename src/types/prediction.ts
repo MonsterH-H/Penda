@@ -48,6 +48,15 @@ export interface MLModelStatus {
   trainingEpoch?: number;
   totalEpochs?: number;
   estimatedTimeRemaining?: string;
+  parameters?: {
+    epochs: number;
+    batchSize: number;
+    learningRate: number;
+    hiddenLayers: number;
+    hiddenUnits: number;
+    dropoutRate: number;
+    [key: string]: any; // Pour permettre des paramètres supplémentaires
+  };
 }
 
 /**

@@ -1,63 +1,33 @@
 
-import { useState, useEffect } from 'react';
-import { Brain, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import { Brain, TrendingUp, TrendingDown, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-interface MLMetrics {
-  accuracy: number;
-  precision: number;
-  recall: number;
-  f1Score: number;
-  lastTrained: Date;
-  status: 'active' | 'training' | 'error';
-}
+import { useMLModelStatus } from '@/hooks/data/useMLModel';
+import { MLModelStatus as MLModelStatusType } from '@/types/prediction';
 
 export const MLModelStatus = () => {
-  const [metrics, setMetrics] = useState<MLMetrics>({
-    accuracy: 94.2,
-    precision: 92.8,
-    recall: 89.5,
-    f1Score: 91.1,
-    lastTrained: new Date(Date.now() - 3600000 * 2),
-    status: 'active'
-  });
-
-  const [isRetraining, setIsRetraining] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMetrics(prev => ({
-        ...prev,
-        accuracy: 94 + Math.random() * 4,
-        precision: 92 + Math.random() * 6,
-        recall: 88 + Math.random() * 8,
-        f1Score: 90 + Math.random() * 5,
-      }));
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleRetrain = () => {
-    setIsRetraining(true);
-    setMetrics(prev => ({ ...prev, status: 'training' }));
-    
-    setTimeout(() => {
-      setIsRetraining(false);
-      setMetrics(prev => ({
-        ...prev,
-        status: 'active',
-        lastTrained: new Date(),
-        accuracy: 95 + Math.random() * 3,
-        precision: 94 + Math.random() * 4,
-        recall: 91 + Math.random() * 6,
-        f1Score: 93 + Math.random() * 4,
-      }));
-    }, 3000);
+  // Utiliser le hook pour récupérer l'état du modèle ML
+  const { modelStatus, isLoading, isTraining, error, trainModel } = useMLModelStatus();
+  
+  // Déterminer le statut du modèle
+  const getModelStatus = (): 'active' | 'training' | 'error' => {
+    if (isTraining) return 'training';
+    if (error) return 'error';
+    return 'active';
+  };
+  
+  const status = getModelStatus();
+  
+  // Gérer le ré-entraînement du modèle
+  const handleRetrain = async () => {
+    try {
+      await trainModel();
+    } catch (error) {
+      console.error('Erreur lors du ré-entraînement du modèle:', error);
+    }
   };
 
   const getStatusColor = () => {
-    switch (metrics.status) {
+    switch (status) {
       case 'active':
         return 'from-green-500 to-emerald-500';
       case 'training':
@@ -68,7 +38,7 @@ export const MLModelStatus = () => {
   };
 
   const getStatusText = () => {
-    switch (metrics.status) {
+    switch (status) {
       case 'active':
         return 'Opérationnel';
       case 'training':
@@ -77,6 +47,19 @@ export const MLModelStatus = () => {
         return 'Erreur';
     }
   };
+
+  // Afficher un indicateur de chargement si nécessaire
+  if (isLoading && !modelStatus) {
+    return (
+      <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 shadow-lg border border-gray-200/50">
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">Modèle ML</h3>
+        <div className="flex items-center justify-center h-48">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Chargement des données...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white/80 backdrop-blur-md rounded-xl p-6 shadow-lg border border-gray-200/50">
@@ -92,22 +75,23 @@ export const MLModelStatus = () => {
         </div>
         <Button
           onClick={handleRetrain}
-          disabled={isRetraining}
+          disabled={isTraining}
           size="sm"
           className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isRetraining ? 'animate-spin' : ''}`} />
-          {isRetraining ? 'Entraînement...' : 'Ré-entraîner'}
+          <RefreshCw className={`w-4 h-4 mr-2 ${isTraining ? 'animate-spin' : ''}`} />
+          {isTraining ? 'Entraînement...' : 'Ré-entraîner'}
         </Button>
       </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          {[
-            { label: 'Précision', value: metrics.accuracy, key: 'accuracy' },
-            { label: 'Précision', value: metrics.precision, key: 'precision' },
-            { label: 'Rappel', value: metrics.recall, key: 'recall' },
-            { label: 'F1-Score', value: metrics.f1Score, key: 'f1Score' },
+          {
+            modelStatus ? [
+            { label: 'Précision', value: modelStatus.accuracy, key: 'accuracy' },
+            { label: 'Précision', value: modelStatus.precision, key: 'precision' },
+            { label: 'Rappel', value: modelStatus.recall, key: 'recall' },
+            { label: 'F1-Score', value: modelStatus.f1Score, key: 'f1Score' },
           ].map((metric) => (
             <div key={metric.key} className="bg-gray-50 rounded-lg p-3">
               <div className="flex items-center justify-between mb-1">
@@ -124,19 +108,28 @@ export const MLModelStatus = () => {
                 {metric.value.toFixed(1)}%
               </div>
             </div>
-          ))}
+          )) : (
+            <div className="col-span-2 p-4 bg-gray-50 rounded-lg text-gray-500">
+              <AlertTriangle className="w-5 h-5 text-amber-500 inline mr-2" />
+              Données du modèle non disponibles
+            </div>
+          )}
         </div>
 
         <div className="border-t pt-4">
           <div className="text-sm text-gray-600">
-            Dernier entraînement: {metrics.lastTrained.toLocaleDateString()} à {metrics.lastTrained.toLocaleTimeString()}
+            {modelStatus ? (
+              <>Dernier entraînement: {modelStatus.lastTrained.toLocaleDateString()} à {modelStatus.lastTrained.toLocaleTimeString()}</>
+            ) : (
+              <>Dernier entraînement: Non disponible</>
+            )}
           </div>
           <div className="mt-2">
             <div className="text-xs text-gray-500 mb-1">Performance globale</div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${metrics.f1Score}%` }}
+                style={{ width: `${modelStatus ? modelStatus.f1Score : 0}%` }}
               ></div>
             </div>
           </div>

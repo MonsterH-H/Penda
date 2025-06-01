@@ -44,7 +44,7 @@ export class SensorDataService {
    */
   static async getRealTimeData(machineId?: string): Promise<TimestampedSensorData[]> {
     try {
-      const params: Record<string, any> = {};
+      const params: Record<string, string | number | boolean> = {};
       if (machineId) {
         params.machineId = machineId;
       }
@@ -73,6 +73,7 @@ export class SensorDataService {
     machineId?: string
   ): Promise<TimestampedSensorData[]> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const params: Record<string, any> = {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),

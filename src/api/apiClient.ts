@@ -10,14 +10,14 @@ export class ApiClient {
    * @param params Paramètres optionnels de la requête
    * @returns Les données de la réponse
    */
-  static async get<T>(endpoint: string, params: Record<string, any> = {}): Promise<T> {
+  static async get<T>(endpoint: string, params: Record<string, string | number | boolean> = {}): Promise<T> {
     try {
       // Construire l'URL avec les paramètres
       const url = new URL(endpoint, API_CONFIG.BASE_URL);
       
       // Ajouter les paramètres de requête s'il y en a
       Object.keys(params).forEach(key => {
-        url.searchParams.append(key, params[key]);
+        url.searchParams.append(key, String(params[key]));
       });
       
       // Effectuer la requête
@@ -53,7 +53,7 @@ export class ApiClient {
    * @param data Les données à envoyer dans la requête
    * @returns Les données de la réponse
    */
-  static async post<T>(endpoint: string, data: any): Promise<T> {
+  static async post<T, D = Record<string, unknown>>(endpoint: string, data: D): Promise<T> {
     try {
       // Construire l'URL
       const url = new URL(endpoint, API_CONFIG.BASE_URL);
@@ -87,7 +87,7 @@ export class ApiClient {
   }
 
   // Gestionnaires de données fictives pour les requêtes GET
-  private static mockDataHandlers: Record<string, (params?: Record<string, any>) => any> = {
+  private static mockDataHandlers: Record<string, (params?: Record<string, string | number | boolean>) => unknown> = {
     // Données des capteurs en temps réel
     [API_CONFIG.ENDPOINTS.SENSOR_DATA]: (params) => {
       const count = 1;
@@ -99,8 +99,8 @@ export class ApiClient {
     [API_CONFIG.ENDPOINTS.HISTORICAL_DATA]: (params) => {
       const count = 100;
       const machineId = params?.machineId;
-      const startDate = params?.startDate ? new Date(params.startDate) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const endDate = params?.endDate ? new Date(params.endDate) : new Date();
+      const startDate = params?.startDate ? new Date(String(params.startDate)) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const endDate = params?.endDate ? new Date(String(params.endDate)) : new Date();
       
       return ApiClient.generateHistoricalData(count, startDate, endDate, machineId);
     },
@@ -122,10 +122,10 @@ export class ApiClient {
   };
 
   // Gestionnaires de données fictives pour les requêtes POST
-  private static mockPostHandlers: Record<string, (data: any) => any> = {
+  private static mockPostHandlers: Record<string, (data: Record<string, unknown>) => unknown> = {
     // Entraînement du modèle ML
     [API_CONFIG.ENDPOINTS.ML_TRAIN]: (data) => {
-      console.log('Simulation d\'entraînement du modèle avec', data?.length || 0, 'points de données');
+      console.log('Simulation d\'entraînement du modèle avec', Array.isArray(data) ? data.length : 0, 'points de données');
       return {
         ...ApiClient.generateMLModelStatus(),
         isTraining: false,
@@ -142,7 +142,7 @@ export class ApiClient {
       return {
         id: `anomaly-${Date.now()}`,
         timestamp: new Date().toISOString(),
-        machine: data.machine || `Machine ${Math.floor(Math.random() * 5) + 1}`,
+        machine: (data as Record<string, unknown>).machine || `Machine ${Math.floor(Math.random() * 5) + 1}`,
         riskScore: Math.random() * 100,
         reconstructionError: Math.random() * 0.5,
         severity: severity[severityIndex],
@@ -155,73 +155,262 @@ export class ApiClient {
     // Import de données
     [API_CONFIG.ENDPOINTS.IMPORT_DATA]: (data) => {
       console.log('Simulation d\'import de données');
+      const length = Array.isArray(data) ? data.length : 0;
       return {
         success: true,
-        message: `${data?.length || 0} points de données importés avec succès`,
-        count: data?.length || 0
+        message: `${length} points de données importés avec succès`,
+        count: length
       };
     }
   };
 
-
   // Implémenter les méthodes pour générer des données fictives
-  private static generateSensorData(count: number, machineId?: string): any {
+  private static generateSensorData(count: number, machineId?: string): Array<Record<string, string | number>> {
     const data = [];
     const machines = ['Machine 1', 'Machine 2', 'Machine 3', 'Machine 4', 'Machine 5'];
     const selectedMachine = machineId ? `Machine ${machineId}` : null;
 
+    // Définir des plages normales pour chaque type de machine
+    const machineProfiles = {
+      'Machine 1': { // Machine plus ancienne, plus de variations
+        temperature: { base: 72, variation: 8, drift: 0.05 },
+        pressure: { base: 2.2, variation: 0.4, drift: 0.01 },
+        vibration: { base: 0.7, variation: 0.3, drift: 0.005 },
+        rotation: { base: 1050, variation: 100, drift: 0.2 },
+        current: { base: 12, variation: 2.5, drift: 0.02 },
+        voltage: { base: 225, variation: 15, drift: 0.1 }
+      },
+      'Machine 2': { // Machine moderne, stable
+        temperature: { base: 65, variation: 5, drift: 0.02 },
+        pressure: { base: 2.0, variation: 0.2, drift: 0.005 },
+        vibration: { base: 0.4, variation: 0.15, drift: 0.002 },
+        rotation: { base: 1200, variation: 50, drift: 0.1 },
+        current: { base: 10, variation: 1.5, drift: 0.01 },
+        voltage: { base: 230, variation: 8, drift: 0.05 }
+      },
+      'Machine 3': { // Machine haute performance
+        temperature: { base: 80, variation: 7, drift: 0.04 },
+        pressure: { base: 2.8, variation: 0.3, drift: 0.008 },
+        vibration: { base: 0.5, variation: 0.2, drift: 0.003 },
+        rotation: { base: 1500, variation: 80, drift: 0.15 },
+        current: { base: 15, variation: 2, drift: 0.015 },
+        voltage: { base: 240, variation: 10, drift: 0.08 }
+      },
+      'Machine 4': { // Machine économique
+        temperature: { base: 60, variation: 6, drift: 0.03 },
+        pressure: { base: 1.8, variation: 0.25, drift: 0.007 },
+        vibration: { base: 0.6, variation: 0.25, drift: 0.004 },
+        rotation: { base: 950, variation: 70, drift: 0.12 },
+        current: { base: 9, variation: 1.8, drift: 0.018 },
+        voltage: { base: 220, variation: 12, drift: 0.09 }
+      },
+      'Machine 5': { // Machine industrielle lourde
+        temperature: { base: 75, variation: 10, drift: 0.06 },
+        pressure: { base: 3.0, variation: 0.5, drift: 0.012 },
+        vibration: { base: 0.8, variation: 0.35, drift: 0.006 },
+        rotation: { base: 900, variation: 120, drift: 0.25 },
+        current: { base: 18, variation: 3, drift: 0.025 },
+        voltage: { base: 235, variation: 18, drift: 0.12 }
+      }
+    };
+
+    // Générer des données avec des tendances et des cycles
     for (let i = 0; i < count; i++) {
       const date = new Date();
       date.setMinutes(date.getMinutes() - i * 5); // Données espacées de 5 minutes
-
+      
+      // Sélectionner une machine
+      const machineName = selectedMachine || machines[Math.floor(Math.random() * machines.length)];
+      const profile = machineProfiles[machineName];
+      
+      // Facteurs cycliques (simule les cycles de travail, variations jour/nuit, etc.)
+      const hourOfDay = date.getHours();
+      const dayFactor = Math.sin((hourOfDay - 6) * Math.PI / 12); // Pic à midi, creux à minuit
+      
+      // Facteur de charge (simule les périodes de forte/faible activité)
+      const loadFactor = 0.8 + 0.2 * Math.sin(i * 0.05);
+      
+      // Introduire des anomalies occasionnelles (environ 5% du temps)
+      const hasAnomaly = Math.random() < 0.05;
+      const anomalyFactor = hasAnomaly ? 1.5 + Math.random() * 0.5 : 1.0;
+      
+      // Calculer les valeurs avec tous les facteurs
+      const getValue = (param: {base: number, variation: number, drift: number}) => {
+        const trend = param.drift * i; // Dérive progressive
+        const cycle = dayFactor * param.variation * 0.3; // Variation cyclique
+        const load = (loadFactor - 1) * param.variation * 0.4; // Effet de la charge
+        const noise = (Math.random() - 0.5) * param.variation * 0.6; // Bruit aléatoire
+        const anomaly = hasAnomaly ? (anomalyFactor - 1) * param.variation : 0; // Anomalie
+        
+        return param.base + trend + cycle + load + noise + anomaly;
+      };
+      
       data.push({
         timestamp: date.toISOString(),
-        machine: selectedMachine || machines[Math.floor(Math.random() * machines.length)],
-        temperature: 65 + Math.random() * 20,
-        pressure: 2.0 + Math.random() * 1.5,
-        vibration: 0.5 + Math.random() * 1.0,
-        rotation: 1000 + Math.random() * 500,
-        current: 10 + Math.random() * 8,
-        voltage: 220 + Math.random() * 40
+        machine: machineName,
+        temperature: getValue(profile.temperature),
+        pressure: getValue(profile.pressure),
+        vibration: getValue(profile.vibration),
+        rotation: getValue(profile.rotation),
+        current: getValue(profile.current),
+        voltage: getValue(profile.voltage)
       });
     }
 
     return data;
   }
 
-  private static generateHistoricalData(count: number, startDate: Date, endDate: Date, machineId?: string): any {
+  private static generateHistoricalData(count: number, startDate: Date, endDate: Date, machineId?: string): Array<Record<string, string | number | boolean | Record<string, string | number | boolean>>> {
     const data = [];
     const machines = ['Machine 1', 'Machine 2', 'Machine 3', 'Machine 4', 'Machine 5'];
     const selectedMachine = machineId ? `Machine ${machineId}` : null;
+    
+    // Définir des plages normales pour chaque type de machine (mêmes profils que generateSensorData)
+    const machineProfiles = {
+      'Machine 1': { // Machine plus ancienne, plus de variations
+        temperature: { base: 72, variation: 8, drift: 0.05 },
+        pressure: { base: 2.2, variation: 0.4, drift: 0.01 },
+        vibration: { base: 0.7, variation: 0.3, drift: 0.005 },
+        rotation: { base: 1050, variation: 100, drift: 0.2 },
+        current: { base: 12, variation: 2.5, drift: 0.02 },
+        voltage: { base: 225, variation: 15, drift: 0.1 }
+      },
+      'Machine 2': { // Machine moderne, stable
+        temperature: { base: 65, variation: 5, drift: 0.02 },
+        pressure: { base: 2.0, variation: 0.2, drift: 0.005 },
+        vibration: { base: 0.4, variation: 0.15, drift: 0.002 },
+        rotation: { base: 1200, variation: 50, drift: 0.1 },
+        current: { base: 10, variation: 1.5, drift: 0.01 },
+        voltage: { base: 230, variation: 8, drift: 0.05 }
+      },
+      'Machine 3': { // Machine haute performance
+        temperature: { base: 80, variation: 7, drift: 0.04 },
+        pressure: { base: 2.8, variation: 0.3, drift: 0.008 },
+        vibration: { base: 0.5, variation: 0.2, drift: 0.003 },
+        rotation: { base: 1500, variation: 80, drift: 0.15 },
+        current: { base: 15, variation: 2, drift: 0.015 },
+        voltage: { base: 240, variation: 10, drift: 0.08 }
+      },
+      'Machine 4': { // Machine économique
+        temperature: { base: 60, variation: 6, drift: 0.03 },
+        pressure: { base: 1.8, variation: 0.25, drift: 0.007 },
+        vibration: { base: 0.6, variation: 0.25, drift: 0.004 },
+        rotation: { base: 950, variation: 70, drift: 0.12 },
+        current: { base: 9, variation: 1.8, drift: 0.018 },
+        voltage: { base: 220, variation: 12, drift: 0.09 }
+      },
+      'Machine 5': { // Machine industrielle lourde
+        temperature: { base: 75, variation: 10, drift: 0.06 },
+        pressure: { base: 3.0, variation: 0.5, drift: 0.012 },
+        vibration: { base: 0.8, variation: 0.35, drift: 0.006 },
+        rotation: { base: 900, variation: 120, drift: 0.25 },
+        current: { base: 18, variation: 3, drift: 0.025 },
+        voltage: { base: 235, variation: 18, drift: 0.12 }
+      }
+    };
     
     // Calculer l'intervalle entre les points de données
     const timeSpan = endDate.getTime() - startDate.getTime();
     const interval = timeSpan / count;
 
+    // Simuler des événements majeurs (maintenance, pannes, etc.)
+    const events = [];
+    const numEvents = Math.floor(count / 50) + 1; // Environ un événement tous les 50 points
+    
+    for (let e = 0; e < numEvents; e++) {
+      events.push({
+        index: Math.floor(Math.random() * count),
+        duration: Math.floor(Math.random() * 10) + 1, // Durée de 1 à 10 points
+        type: Math.random() < 0.7 ? 'maintenance' : 'panne', // 70% maintenance, 30% panne
+        intensity: 0.5 + Math.random() * 1.5 // Facteur d'intensité
+      });
+    }
+
+    // Générer une tendance globale (usure progressive, amélioration après maintenance, etc.)
+    const globalTrend = {
+      direction: Math.random() < 0.7 ? 1 : -1, // 70% dégradation, 30% amélioration
+      intensity: 0.1 + Math.random() * 0.3 // Intensité de la tendance
+    };
+
     for (let i = 0; i < count; i++) {
       const date = new Date(startDate.getTime() + interval * i);
       const machineName = selectedMachine || machines[Math.floor(Math.random() * machines.length)];
+      const profile = machineProfiles[machineName];
       
-      // Générer des valeurs avec des tendances pour rendre les données plus réalistes
-      const timeProgress = i / count; // 0 au début, 1 à la fin
-      const noise = Math.sin(i * 0.2) * 5; // Bruit sinusoidal
+      // Facteurs temporels
+      const timeProgress = i / count; // Progression dans la période (0 à 1)
+      const hourOfDay = date.getHours();
+      const dayOfWeek = date.getDay(); // 0 = dimanche, 6 = samedi
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
       
+      // Facteur jour/nuit (charge plus élevée pendant les heures de travail)
+      const dayFactor = isWeekend ? 0.7 : Math.sin((hourOfDay - 6) * Math.PI / 12) * 0.5 + 0.5;
+      
+      // Vérifier si un événement est actif à ce point
+      let eventFactor = 1.0;
+      let eventType = null;
+      
+      for (const event of events) {
+        if (i >= event.index && i < event.index + event.duration) {
+          eventType = event.type;
+          if (event.type === 'maintenance') {
+            // Pendant la maintenance: valeurs plus stables, mais machine moins productive
+            eventFactor = 0.5;
+          } else if (event.type === 'panne') {
+            // Pendant une panne: valeurs anormales
+            eventFactor = event.intensity;
+          }
+          break;
+        }
+      }
+      
+      // Calculer les valeurs avec tous les facteurs
+      const getValue = (param: {base: number, variation: number, drift: number}) => {
+        // Tendance globale (usure progressive)
+        const trend = param.drift * i * globalTrend.direction * globalTrend.intensity;
+        
+        // Variation cyclique (jour/nuit, semaine/weekend)
+        const cycle = dayFactor * param.variation * 0.3;
+        
+        // Bruit aléatoire (variations normales)
+        const noise = (Math.random() - 0.5) * param.variation * 0.4;
+        
+        // Effet des événements (maintenance, panne)
+        let eventEffect = 0;
+        if (eventType === 'maintenance') {
+          // Pendant la maintenance: valeurs plus stables
+          eventEffect = -param.variation * 0.3;
+        } else if (eventType === 'panne') {
+          // Pendant une panne: valeurs anormales
+          eventEffect = param.variation * eventFactor;
+        }
+        
+        return param.base + trend + cycle + noise + eventEffect;
+      };
+      
+      // Générer des données avec des tendances réalistes
       data.push({
         timestamp: date.toISOString(),
         machine: machineName,
-        temperature: 65 + timeProgress * 10 + noise + Math.random() * 5,
-        pressure: 2.0 + timeProgress * 0.5 + Math.sin(i * 0.1) * 0.3 + Math.random() * 0.3,
-        vibration: 0.5 + Math.sin(i * 0.3) * 0.3 + Math.random() * 0.2,
-        rotation: 1000 + Math.cos(i * 0.05) * 200 + Math.random() * 100,
-        current: 10 + timeProgress * 3 + Math.sin(i * 0.15) * 2 + Math.random() * 1,
-        voltage: 220 + Math.sin(i * 0.1) * 15 + Math.random() * 5
+        temperature: getValue(profile.temperature),
+        pressure: getValue(profile.pressure),
+        vibration: getValue(profile.vibration),
+        rotation: getValue(profile.rotation),
+        current: getValue(profile.current),
+        voltage: getValue(profile.voltage),
+        // Ajouter des métadonnées pour l'analyse
+        metadata: {
+          eventType: eventType,
+          dayFactor: dayFactor,
+          isWeekend: isWeekend
+        }
       });
     }
 
     return data;
   }
 
-  private static generateMachineStatus(): any {
+  private static generateMachineStatus(): Array<Record<string, string | number | Record<string, number>>> {
     const machines = ['Machine 1', 'Machine 2', 'Machine 3', 'Machine 4', 'Machine 5'];
     const statuses = ['online', 'warning', 'offline', 'maintenance'];
     
@@ -263,7 +452,7 @@ export class ApiClient {
     });
   }
 
-  private static generateMachines(): any {
+  private static generateMachines(): Array<Record<string, string>> {
     return [
       { id: 'machine-1', name: 'Machine 1', type: 'Pompe centrifuge', location: 'Zone A' },
       { id: 'machine-2', name: 'Machine 2', type: 'Compresseur', location: 'Zone B' },
@@ -273,7 +462,7 @@ export class ApiClient {
     ];
   }
 
-  private static generateMLModelStatus(): any {
+  private static generateMLModelStatus(): Record<string, boolean | number | Date | undefined | Record<string, number>> {
     const now = new Date();
     const lastTrained = new Date(now.getTime() - Math.random() * 1000 * 60 * 60 * 24 * 3); // Entre maintenant et 3 jours avant
     

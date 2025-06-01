@@ -106,28 +106,152 @@ export class FileImportAdapter {
    * @returns Donnu00e9es normaliswu00e9es
    */
   private static normalizeData(data: any[]): TimestampedSensorData[] {
-    return data.map(item => {
-      // Mapper les noms de champs potentiellement diffu00e9rents
-      const timestamp = item.timestamp || item.time || item.date || new Date().toISOString();
-      const machine = item.machine || item.machineId || item.device || 'Machine 1';
+    // Vérifier si les données sont valides
+    if (!data || data.length === 0) {
+      throw new Error('Aucune donnée valide trouvée dans le fichier importé');
+    }
+    
+    // Vérifier les champs requis
+    const requiredFields = ['machine', 'temperature', 'pressure', 'vibration'];
+    const optionalFields = ['timestamp', 'rotation', 'current', 'voltage'];
+    const alternativeFields = {
+      timestamp: ['time', 'date'],
+      machine: ['machineId', 'device', 'equipment'],
+      temperature: ['temp', 'temperature_c', 'temperature_f'],
+      pressure: ['press', 'pressure_bar', 'pressure_psi'],
+      vibration: ['vib', 'vibration_level', 'vibration_hz'],
+      rotation: ['rpm', 'speed', 'rotation_speed'],
+      current: ['amp', 'amperage', 'current_a'],
+      voltage: ['volt', 'voltage_v']
+    };
+    
+    // Analyser le premier élément pour déterminer le mappage des champs
+    const fieldMapping: Record<string, string> = {};
+    const firstItem = data[0];
+    
+    for (const requiredField of requiredFields) {
+      // Vérifier si le champ existe directement
+      if (firstItem[requiredField] !== undefined) {
+        fieldMapping[requiredField] = requiredField;
+        continue;
+      }
       
-      // Ru00e9cupu00e9rer les valeurs des capteurs
-      const temperature = this.parseValue(item.temperature);
-      const pressure = this.parseValue(item.pressure);
-      const vibration = this.parseValue(item.vibration);
-      const rotation = this.parseValue(item.rotation || item.rpm);
-      const current = this.parseValue(item.current);
-      const voltage = this.parseValue(item.voltage);
+      // Vérifier les alternatives
+      const alternatives = alternativeFields[requiredField as keyof typeof alternativeFields] || [];
+      const foundAlternative = alternatives.find(alt => firstItem[alt] !== undefined);
+      
+      if (foundAlternative) {
+        fieldMapping[requiredField] = foundAlternative;
+      } else if (requiredField === 'machine') {
+        // Le champ machine est absolument nécessaire
+        throw new Error(`Champ requis '${requiredField}' non trouvé dans les données importées`);
+      }
+    }
+    
+    // Vérifier les champs optionnels
+    for (const optionalField of optionalFields) {
+      if (firstItem[optionalField] !== undefined) {
+        fieldMapping[optionalField] = optionalField;
+        continue;
+      }
+      
+      const alternatives = alternativeFields[optionalField as keyof typeof alternativeFields] || [];
+      const foundAlternative = alternatives.find(alt => firstItem[alt] !== undefined);
+      
+      if (foundAlternative) {
+        fieldMapping[optionalField] = foundAlternative;
+      }
+    }
+    
+    // Calculer les statistiques pour les valeurs manquantes
+    const stats: Record<string, { sum: number; count: number; min: number; max: number }> = {
+      temperature: { sum: 0, count: 0, min: Infinity, max: -Infinity },
+      pressure: { sum: 0, count: 0, min: Infinity, max: -Infinity },
+      vibration: { sum: 0, count: 0, min: Infinity, max: -Infinity },
+      rotation: { sum: 0, count: 0, min: Infinity, max: -Infinity },
+      current: { sum: 0, count: 0, min: Infinity, max: -Infinity },
+      voltage: { sum: 0, count: 0, min: Infinity, max: -Infinity }
+    };
+    
+    // Première passe: collecter les statistiques
+    for (const item of data) {
+      for (const field of [...requiredFields, ...optionalFields]) {
+        if (field === 'timestamp' || field === 'machine') continue;
+        
+        const mappedField = fieldMapping[field];
+        if (!mappedField) continue;
+        
+        const value = this.parseValue(item[mappedField]);
+        if (typeof value === 'number' && !isNaN(value)) {
+          stats[field].sum += value;
+          stats[field].count++;
+          stats[field].min = Math.min(stats[field].min, value);
+          stats[field].max = Math.max(stats[field].max, value);
+        }
+      }
+    }
+    
+    // Calculer les moyennes et les plages pour chaque champ
+    const defaults: Record<string, { mean: number; range: number }> = {};
+    for (const field in stats) {
+      if (stats[field].count > 0) {
+        defaults[field] = {
+          mean: stats[field].sum / stats[field].count,
+          range: stats[field].max - stats[field].min
+        };
+      } else {
+        // Valeurs par défaut si aucune donnée n'est disponible
+        defaults[field] = {
+          mean: field === 'temperature' ? 25 : 
+                field === 'pressure' ? 2.0 : 
+                field === 'vibration' ? 0.5 : 
+                field === 'rotation' ? 1000 : 
+                field === 'current' ? 10 : 220,
+          range: field === 'temperature' ? 10 : 
+                 field === 'pressure' ? 1.5 : 
+                 field === 'vibration' ? 1.0 : 
+                 field === 'rotation' ? 500 : 
+                 field === 'current' ? 8 : 40
+        };
+      }
+    }
+    
+    // Deuxième passe: normaliser les données
+    return data.map((item, index) => {
+      // Extraire timestamp et machine
+      const timestampField = fieldMapping['timestamp'];
+      const machineField = fieldMapping['machine'];
+      
+      // Générer un timestamp automatique si non présent
+      // Si le timestamp n'est pas trouvé, on génère une série temporelle
+      // en partant de la date actuelle et en reculant de 1 heure par index
+      const now = new Date();
+      const autoTimestamp = new Date(now.getTime() - (index * 3600000)).toISOString(); // -1h par entrée
+      
+      const timestamp = timestampField ? (item[timestampField] || item.time || item.date) : autoTimestamp;
+      const machine = item[machineField] || item.machineId || item.device || 'Machine 1';
+      
+      // Extraire les valeurs des capteurs avec gestion des valeurs manquantes
+      const getValue = (field: string): number => {
+        const mappedField = fieldMapping[field];
+        if (!mappedField) return defaults[field].mean + (Math.random() - 0.5) * defaults[field].range * 0.1;
+        
+        const value = this.parseValue(item[mappedField]);
+        if (typeof value === 'number' && !isNaN(value)) return value;
+        
+        // Valeur manquante: utiliser la moyenne avec une petite variation aléatoire
+        return defaults[field].mean + (Math.random() - 0.5) * defaults[field].range * 0.1;
+      };
       
       return {
         timestamp: typeof timestamp === 'string' ? timestamp : timestamp.toISOString(),
         machine: String(machine),
-        temperature: typeof temperature === 'number' ? temperature : 25 + Math.random() * 10,
-        pressure: typeof pressure === 'number' ? pressure : 2.0 + Math.random() * 1.5,
-        vibration: typeof vibration === 'number' ? vibration : 0.5 + Math.random() * 1.0,
-        rotation: typeof rotation === 'number' ? rotation : 1000 + Math.random() * 500,
-        current: typeof current === 'number' ? current : 10 + Math.random() * 8,
-        voltage: typeof voltage === 'number' ? voltage : 220 + Math.random() * 40
+        temperature: getValue('temperature'),
+        pressure: getValue('pressure'),
+        vibration: getValue('vibration'),
+        rotation: getValue('rotation'),
+        current: getValue('current'),
+        voltage: getValue('voltage')
       };
     });
   }

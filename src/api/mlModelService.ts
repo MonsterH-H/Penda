@@ -26,7 +26,7 @@ export class MLModelService {
    * @param data - Données d'entraînement (optionnel)
    * @returns Statut du modèle après entraînement
    */
-  static async trainModel(data?: any[]): Promise<MLModelStatus> {
+  static async trainModel(data?: unknown[]): Promise<MLModelStatus> {
     try {
       // Si aucune donnée n'est fournie, entraîner avec les données existantes sur le serveur
       if (!data) {
@@ -46,7 +46,7 @@ export class MLModelService {
    * @param sensorData - Données de capteur
    * @returns Résultat de la prédiction
    */
-  static async predictAnomaly(sensorData: TimestampedSensorData): Promise<any> {
+  static async predictAnomaly(sensorData: TimestampedSensorData): Promise<unknown> {
     try {
       return await ApiClient.post(API_CONFIG.ENDPOINTS.ML_PREDICT, sensorData);
     } catch (error) {

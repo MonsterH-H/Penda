@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { DataImportUtils, ImportResult } from '@/utils/data/importUtils';
 import { TimestampedSensorData } from '@/api/sensorDataService';
 import { useData } from '@/contexts/DataContext';
+import { DataImportGuide } from './DataImportGuide';
 
 /**
  * Props pour le composant DataImportForm
@@ -147,6 +148,7 @@ export const DataImportForm = ({ onImportComplete, onTrainComplete }: DataImport
           <p className="text-xs text-gray-500">
             Formats acceptu00e9s: CSV, JSON. Taille max: 10 MB.
           </p>
+          {!selectedFile && <DataImportGuide className="mt-2" />}
         </div>
         
         {/* Ru00e9sultat de l'importation */}

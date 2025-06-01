@@ -36,13 +36,15 @@ interface AnomalyPrediction {
   prediction: number[];
 }
 
+type NewType = (data: number[][]) => Promise<void>;
+
 interface MLModelContextType {
   model: tf.LayersModel | null;
   metrics: MLModelMetrics;
   isTraining: boolean;
   isLoaded: boolean;
   predictions: AnomalyPrediction[];
-  trainModel: (data: number[][]) => Promise<void>;
+  trainModel: NewType;
   predict: (data: number[]) => Promise<AnomalyPrediction>;
   loadModel: () => Promise<void>;
   saveModel: () => Promise<void>;

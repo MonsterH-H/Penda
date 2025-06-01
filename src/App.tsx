@@ -11,6 +11,8 @@ import Prediction from "./pages/Prediction";
 import Parametres from "./pages/Parametres";
 import Profile from "./pages/Profile";
 import DataManagement from "./pages/DataManagement";
+import Notifications from "./pages/Notifications";
+import Aide from "./pages/Aide";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MLModelProvider } from "./contexts/MLModelContext";
@@ -33,51 +35,61 @@ const App = () => (
       <MLModelProvider>
         <DataProvider>
           <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              } />
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              } />
-              <Route path="/historique" element={
-                <ProtectedRoute>
-                  <Historique />
-                </ProtectedRoute>
-              } />
-              <Route path="/prediction" element={
-                <ProtectedRoute>
-                  <Prediction />
-                </ProtectedRoute>
-              } />
-              <Route path="/parametres" element={
-                <ProtectedRoute>
-                  <Parametres />
-                </ProtectedRoute>
-              } />
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              } />
-              <Route path="/donnees" element={
-                <ProtectedRoute>
-                  <DataManagement />
-                </ProtectedRoute>
-              } />
-              <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<Navigate to="/404" replace />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                } />
+                <Route path="/historique" element={
+                  <ProtectedRoute>
+                    <Historique />
+                  </ProtectedRoute>
+                } />
+                <Route path="/prediction" element={
+                  <ProtectedRoute>
+                    <Prediction />
+                  </ProtectedRoute>
+                } />
+                <Route path="/parametres" element={
+                  <ProtectedRoute>
+                    <Parametres />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profil" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/donnees" element={
+                  <ProtectedRoute>
+                    <DataManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/notifications" element={
+                  <ProtectedRoute>
+                    <Notifications />
+                  </ProtectedRoute>
+                } />
+                <Route path="/aide" element={
+                  <ProtectedRoute>
+                    <Aide />
+                  </ProtectedRoute>
+                } />
+                <Route path="/404" element={<NotFound />} />
+                <Route path="*" element={<Navigate to="/404" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
         </DataProvider>
       </MLModelProvider>
     </AuthProvider>

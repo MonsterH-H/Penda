@@ -6,9 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, FileType, Check, AlertTriangle } from 'lucide-react';
+import { Upload, FileType, Check } from 'lucide-react';
+import { DataImportGuide } from './DataImportGuide';
+import { TimestampedSensorData } from '@/api/sensorDataService';
 
+// Définition de l'interface pour le mappage des colonnes
 interface ColumnMapping {
+  timestamp?: string;
+  machine?: string;
   temperature: string;
   pressure: string;
   vibration: string;
@@ -18,14 +23,18 @@ interface ColumnMapping {
 }
 
 export const DataUploader = () => {
+  // Hooks pour l'accès au modèle ML et au système de notifications (toast)
   const { trainModel, predict } = useMLModel();
   const { toast } = useToast();
   
+  // États pour gérer le fichier, chargement, prévisualisation, colonnes, et mappage
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [previewData, setPreviewData] = useState<Record<string, string | number>[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [mapping, setMapping] = useState<ColumnMapping>({
+    timestamp: '',
+    machine: '',
     temperature: '',
     pressure: '',
     vibration: '',
@@ -34,6 +43,7 @@ export const DataUploader = () => {
     voltage: ''
   });
 
+  // Gère le changement de fichier (upload)
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
@@ -42,24 +52,26 @@ export const DataUploader = () => {
     parseFile(selectedFile);
   };
 
+  // Parse le fichier CSV ou JSON et prépare la prévisualisation
   const parseFile = async (file: File) => {
     setIsLoading(true);
     try {
       const text = await file.text();
-      let data: any[] = [];
+      let data: Record<string, string | number>[] = [];
       
       if (file.name.endsWith('.csv')) {
-        // Parse CSV
+        // Traitement du CSV
         const lines = text.split('\n');
         const headers = lines[0].split(',').map(h => h.trim());
         
         setColumns(headers);
         
+        // Limite la prévisualisation aux 5 premières lignes
         for (let i = 1; i < Math.min(lines.length, 6); i++) {
           if (!lines[i].trim()) continue;
           
           const values = lines[i].split(',').map(v => v.trim());
-          const row: Record<string, string> = {};
+          const row: Record<string, string | number> = {};
           
           headers.forEach((header, index) => {
             row[header] = values[index] || '';
@@ -68,7 +80,7 @@ export const DataUploader = () => {
           data.push(row);
         }
       } else if (file.name.endsWith('.json')) {
-        // Parse JSON
+        // Traitement du JSON
         const jsonData = JSON.parse(text);
         data = Array.isArray(jsonData) ? jsonData.slice(0, 5) : [jsonData];
         
@@ -79,30 +91,36 @@ export const DataUploader = () => {
       
       setPreviewData(data);
 
-      // Auto-map columns if possible
+      // Automapping des colonnes si possible
       const newMapping = { ...mapping };
       const lowerColumns = columns.map(c => c.toLowerCase());
       
+      // Mapping automatique du timestamp
+      if (lowerColumns.includes('timestamp') || lowerColumns.includes('time') || lowerColumns.includes('date')) {
+        const timestampIndex = lowerColumns.findIndex(c => c === 'timestamp' || c === 'time' || c === 'date');
+        newMapping.timestamp = columns[timestampIndex];
+      }
+      // Mapping automatique de la machine
+      if (lowerColumns.includes('machine') || lowerColumns.includes('machineid') || lowerColumns.includes('device') || lowerColumns.includes('equipment')) {
+        const machineIndex = lowerColumns.findIndex(c => c === 'machine' || c === 'machineid' || c === 'device' || c === 'equipment');
+        newMapping.machine = columns[machineIndex];
+      }
+      // Mapping pour chaque variable
       if (lowerColumns.includes('temperature') || lowerColumns.includes('temp')) {
         newMapping.temperature = columns[lowerColumns.findIndex(c => c === 'temperature' || c === 'temp')];
       }
-      
       if (lowerColumns.includes('pressure') || lowerColumns.includes('press')) {
         newMapping.pressure = columns[lowerColumns.findIndex(c => c === 'pressure' || c === 'press')];
       }
-      
       if (lowerColumns.includes('vibration') || lowerColumns.includes('vib')) {
         newMapping.vibration = columns[lowerColumns.findIndex(c => c === 'vibration' || c === 'vib')];
       }
-      
       if (lowerColumns.includes('rotation') || lowerColumns.includes('rot') || lowerColumns.includes('rpm')) {
         newMapping.rotation = columns[lowerColumns.findIndex(c => c === 'rotation' || c === 'rot' || c === 'rpm')];
       }
-      
       if (lowerColumns.includes('current') || lowerColumns.includes('amp')) {
         newMapping.current = columns[lowerColumns.findIndex(c => c === 'current' || c === 'amp')];
       }
-      
       if (lowerColumns.includes('voltage') || lowerColumns.includes('volt')) {
         newMapping.voltage = columns[lowerColumns.findIndex(c => c === 'voltage' || c === 'volt')];
       }
@@ -114,7 +132,7 @@ export const DataUploader = () => {
         description: `${data.length} lignes analysées pour prévisualisation`,
       });
     } catch (error) {
-      console.error('Error parsing file:', error);
+      console.error('Erreur lors de la lecture du fichier :', error);
       toast({
         title: "Erreur",
         description: "Impossible de lire le fichier. Vérifiez le format.",
@@ -125,6 +143,7 @@ export const DataUploader = () => {
     }
   };
 
+  // Gère le changement de mapping de colonnes par l'utilisateur
   const handleMappingChange = (field: keyof ColumnMapping, value: string) => {
     setMapping(prev => ({
       ...prev,
@@ -132,6 +151,7 @@ export const DataUploader = () => {
     }));
   };
 
+  // Traite les données pour entraîner le modèle
   const handleProcessData = async () => {
     if (!file || !previewData.length) {
       toast({
@@ -142,7 +162,7 @@ export const DataUploader = () => {
       return;
     }
 
-    // Check if all required fields are mapped
+    // Vérifie si toutes les colonnes nécessaires sont mappées
     const unmappedFields = Object.entries(mapping)
       .filter(([_, value]) => !value)
       .map(([key]) => key);
@@ -160,10 +180,10 @@ export const DataUploader = () => {
 
     try {
       const text = await file.text();
-      let data: any[] = [];
+      let data: Record<string, string | number>[] = [];
       
       if (file.name.endsWith('.csv')) {
-        // Parse full CSV
+        // Parse le CSV complet
         const lines = text.split('\n');
         const headers = lines[0].split(',').map(h => h.trim());
         
@@ -171,7 +191,7 @@ export const DataUploader = () => {
           if (!lines[i].trim()) continue;
           
           const values = lines[i].split(',').map(v => v.trim());
-          const row: Record<string, string> = {};
+          const row: Record<string, string | number> = {};
           
           headers.forEach((header, index) => {
             row[header] = values[index] || '';
@@ -180,29 +200,64 @@ export const DataUploader = () => {
           data.push(row);
         }
       } else if (file.name.endsWith('.json')) {
-        // Parse full JSON
+        // Parse le JSON complet
         const jsonData = JSON.parse(text);
         data = Array.isArray(jsonData) ? jsonData : [jsonData];
       }
 
-      // Transform data according to mapping
-      const trainingData = data.map(row => [
-        parseFloat(row[mapping.temperature]),
-        parseFloat(row[mapping.pressure]),
-        parseFloat(row[mapping.vibration]),
-        parseFloat(row[mapping.rotation]),
-        parseFloat(row[mapping.current]),
-        parseFloat(row[mapping.voltage])
-      ]);
+      // Transforme les données selon le mapping
+      const processedData: TimestampedSensorData[] = data.map((row, index) => {
+        // Génère un timestamp automatique si non présent
+        const now = new Date();
+        const autoTimestamp = new Date(now.getTime() - (index * 3600000)).toISOString(); // -1h par entrée
+        
+        // Récupère le timestamp mappé ou génère automatiquement
+        const timestampVal = mapping.timestamp && row[mapping.timestamp]
+          ? row[mapping.timestamp]
+          : autoTimestamp;
+        const timestamp =
+          typeof timestampVal === 'string'
+            ? timestampVal
+            : String(timestampVal);
 
-      // Filter out rows with NaN values
-      const validData = trainingData.filter(row => !row.some(isNaN));
+        // Récupère la machine mappée ou génère une valeur par défaut
+        const machineVal = mapping.machine && row[mapping.machine]
+          ? row[mapping.machine]
+          : `Machine ${(index % 4) + 1}`;
+        const machine = String(machineVal);
+
+        // Fonction utilitaire pour convertir les champs numériques
+        const numField = (field: keyof ColumnMapping) =>
+          parseFloat(
+            row[mapping[field] as string] !== undefined
+              ? String(row[mapping[field] as string])
+              : ''
+          ) || 0;
+
+        return {
+          timestamp,
+          machine,
+          temperature: numField('temperature'),
+          pressure: numField('pressure'),
+          vibration: numField('vibration'),
+          rotation: numField('rotation'),
+          current: numField('current'),
+          voltage: numField('voltage')
+        };
+      });
+
+      // Filtre les lignes invalides
+      const validData = processedData.filter(item => 
+        !isNaN(item.temperature) && 
+        !isNaN(item.pressure) && 
+        !isNaN(item.vibration)
+      );
 
       if (validData.length === 0) {
         throw new Error("Aucune donnée valide après conversion");
       }
 
-      // Train model with the data
+      // Entraîne le modèle sur les données valides
       await trainModel(validData);
 
       toast({
@@ -210,10 +265,10 @@ export const DataUploader = () => {
         description: `Modèle entraîné avec ${validData.length} lignes de données valides`,
       });
 
-      // Make a prediction with the first row as an example
+      // Fait une prédiction sur la première ligne à titre d'exemple
       await predict(validData[0]);
     } catch (error) {
-      console.error('Error processing data:', error);
+      console.error('Erreur lors du traitement des données :', error);
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Erreur lors du traitement des données",
@@ -224,6 +279,7 @@ export const DataUploader = () => {
     }
   };
 
+  // Affichage du composant
   return (
     <Card className="bg-white/80 backdrop-blur-md shadow-lg border border-gray-200/50">
       <CardHeader>
@@ -237,8 +293,8 @@ export const DataUploader = () => {
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* File upload */}
-        <div className="space-y-2">
+        {/* Upload du fichier */}
+        <div className="space-y-4">
           <Label htmlFor="file-upload">Fichier de données (CSV ou JSON)</Label>
           <div className="flex items-center space-x-2">
             <Input 
@@ -262,9 +318,12 @@ export const DataUploader = () => {
             </Button>
           </div>
           <p className="text-xs text-gray-500">Formats supportés: CSV, JSON</p>
+          
+          {/* Guide d'importation */}
+          {!file && <DataImportGuide className="mt-2" />}
         </div>
 
-        {/* Data preview */}
+        {/* Prévisualisation des données */}
         {previewData.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Aperçu des données</h3>
@@ -298,7 +357,7 @@ export const DataUploader = () => {
           </div>
         )}
 
-        {/* Column mapping */}
+        {/* Mapping des colonnes */}
         {columns.length > 0 && (
           <div className="space-y-4">
             <h3 className="text-sm font-medium">Mappage des colonnes</h3>

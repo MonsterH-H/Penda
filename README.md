@@ -1,152 +1,98 @@
-# Bienvenue dans votre projet Penda
+# Industria - Application de Maintenance Prédictive
 
-## Project info
+## Description du Projet
 
-**Application de surveillance industrielle intelligente**
+Industria est une application web de pointe conçue pour la surveillance et la maintenance prédictive des équipements industriels. En exploitant la puissance de l'apprentissage automatique (Machine Learning) avec TensorFlow.js, elle permet aux entreprises d'anticiper les pannes, d'optimiser les opérations de maintenance et d'améliorer l'efficacité globale de leurs actifs.
 
-## How can I edit this code?
+L'application offre une interface intuitive pour le téléchargement, le traitement et l'analyse des données de capteurs, transformant les données brutes en informations exploitables pour une prise de décision éclairée.
 
-There are several ways of editing your application.
+## Fonctionnalités Clés
 
-**Utiliser Penda**
+*   **Téléchargement et Traitement des Données :** Importez facilement des données de capteurs au format CSV ou JSON. L'application gère le mappage automatique et manuel des colonnes (horodatage, machine, température, pression, vibration, rotation, courant, tension).
+*   **Prévisualisation des Données :** Visualisez un aperçu des données téléchargées avant de les traiter pour assurer leur conformité.
+*   **Entraînement de Modèles ML :** Entraînez des modèles d'autoencodeurs basés sur TensorFlow.js pour la détection d'anomalies. L'application permet de charger des modèles existants ou d'en créer de nouveaux.
+*   **Prédiction et Détection d'Anomalies :** Effectuez des prédictions pour identifier les comportements anormaux des équipements et calculez les erreurs de reconstruction pour évaluer la gravité des anomalies.
+*   **Visualisation des Métriques du Modèle :** Suivez les performances de vos modèles grâce à des métriques clés telles que la précision, le rappel et le score F1.
+*   **Affichage Détaillé des Anomalies :** Obtenez des informations détaillées sur chaque anomalie détectée, y compris sa gravité et les facteurs contributifs.
+*   **Contrôle du Modèle :** Gérez vos modèles ML directement depuis l'interface utilisateur, avec des options pour le réentraînement et la mise à jour des données.
+*   **Gestion des Utilisateurs :** Intègre des fonctionnalités d'authentification et de gestion de profil pour un accès sécurisé et personnalisé.
 
-Démarrez l'application localement et commencez à surveiller vos équipements industriels.
+## Cas d'Utilisation
 
-**Use your preferred IDE**
+Industria est un outil essentiel pour les industries cherchant à optimiser leurs opérations de maintenance et à prolonger la durée de vie de leurs équipements :
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+*   **Maintenance Prédictive :** Anticipez les défaillances d'équipements en détectant les signes avant-coureurs d'anomalies, permettant une planification proactive des interventions et une réduction significative des temps d'arrêt imprévus.
+*   **Surveillance Continue de la Santé des Machines :** Surveillez en temps réel l'état de fonctionnement de vos machines industrielles en analysant les données de capteurs, garantissant une performance optimale.
+*   **Optimisation des Processus :** Identifiez les inefficacités ou les déviations par rapport aux conditions de fonctionnement normales, contribuant à l'amélioration continue des processus industriels.
+*   **Analyse des Causes Racines :** Comprenez les origines des anomalies grâce à l'identification des facteurs contributifs, facilitant la mise en œuvre de solutions correctives ciblées et durables.
+*   **Gestion Stratégique des Actifs :** Obtenez une vue d'ensemble de la santé de votre parc machine pour une gestion plus efficace des actifs et une allocation optimisée des ressources.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Technologies Utilisées
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-## Technologies utilisées
-
-- **Frontend** :
-  - [Vite](https://vitejs.dev/) - Build tool et serveur de développement ultra-rapide
-  - [React](https://reactjs.org/) - Bibliothèque UI déclarative
-  - [TypeScript](https://www.typescriptlang.org/) - Pour un code plus robuste et maintenable
-  - [Tailwind CSS](https://tailwindcss.com/) - Framework CSS utility-first
-  - [shadcn/ui](https://ui.shadcn.com/) - Composants d'interface réutilisables
-  - [React Router](https://reactrouter.com/) - Routage et navigation
-  - [TensorFlow.js](https://www.tensorflow.org/js) - Machine learning dans le navigateur
-
-- **Outils de développement** :
-  - ESLint - Linting du code
-  - Prettier - Formatage du code
-  - Husky - Hooks Git
-
-## Fonctionnalités principales
-
-### 1. Surveillance en temps réel
-- Visualisation des données des capteurs en temps réel
-- Statut des machines et métriques de performance
-- Alertes immédiates en cas d'anomalie
-
-### 2. Analyse des données historiques
-- Visualisation des tendances historiques
-- Filtrage par période et par machine
-- Export des données pour analyse externe
-
-### 3. Détection d'anomalies par ML
-- Modèle de machine learning intégré
-- Entraînement sur les données spécifiques de votre équipement
-- Prédiction des défaillances avant qu'elles ne se produisent
-
-### 4. Gestion des données
-- Import et export de données
-- Validation et nettoyage automatique
-- Intégration avec les systèmes industriels existants
+*   **Frontend :** React, TypeScript, Tailwind CSS
+*   **Machine Learning :** TensorFlow.js
+*   **Gestion des Dépendances :** npm
 
 ## Installation
 
-```bash
-# Cloner le dépôt
-git clone https://github.com/votre-utilisateur/penda.git
-cd penda
+Pour installer et exécuter l'application Industria en local, suivez les étapes ci-dessous :
 
-# Installer les dépendances
-npm install
+1.  **Cloner le dépôt :**
+    ```bash
+    git clone <URL_DU_DEPOT>
+    cd industria-main
+    ```
 
-# Démarrer le serveur de développement
-npm run dev
+2.  **Installer les dépendances :**
+    ```bash
+    npm install
+    ```
+    *Note : Des vulnérabilités de sécurité peuvent être signalées lors de l'installation. Il est recommandé d'exécuter `npm audit fix` si nécessaire.*
+
+3.  **Démarrer l'application en mode développement :**
+    ```bash
+    npm run dev
+    ```
+    L'application sera accessible via votre navigateur à l'adresse `http://localhost:8081/` (ou un autre port si le 8080 est déjà utilisé).
+
+## Structure du Projet
+
+Le projet est organisé comme suit :
+
+```
+industria-main/
+├── public/                   # Fichiers statiques (images, favicon)
+├── src/                      # Code source de l'application
+│   ├── adapters/             # Adaptateurs pour la logique métier (données, ML)
+│   ├── api/                  # Services d'API pour l'interaction backend
+│   ├── components/           # Composants React réutilisables (UI, dashboard, auth, etc.)
+│   │   ├── auth/
+│   │   ├── dashboard/
+│   │   ├── data/
+│   │   ├── historique/
+│   │   ├── layout/
+│   │   ├── parametres/
+│   │   ├── prediction/
+│   │   └── ui/
+│   ├── config/               # Fichiers de configuration
+│   ├── contexts/             # Contextes React pour la gestion d'état globale (Auth, Data, MLModel)
+│   ├── hooks/                # Hooks React personnalisés
+│   ├── lib/                  # Utilitaires et fonctions helper
+│   ├── pages/                # Pages principales de l'application
+│   ├── services/             # Services pour la logique métier spécifique
+│   ├── types/                # Définitions de types TypeScript
+│   └── utils/                # Fonctions utilitaires
+├── datasets/                 # Exemple de données (e.g., equipment_anomaly_data.csv)
+├── package.json              # Métadonnées du projet et dépendances
+├── tailwind.config.ts        # Configuration de Tailwind CSS
+├── tsconfig.json             # Configuration TypeScript
+└── vite.config.ts            # Configuration de Vite
 ```
 
-## Déploiement
+## Contribution
 
-```bash
-# Construire l'application pour la production
-npm run build
-```
-
-Le résultat de la construction se trouve dans le dossier `dist` et peut être déployé sur n'importe quel serveur web statique.
-
-## Structure du projet
-
-```
-src/
-u251cu2500u2500 adapters/     # Adaptateurs pour traiter les données
-u251cu2500u2500 api/          # Services d'API pour communiquer avec le backend
-u251cu2500u2500 components/   # Composants réutilisables
-u251cu2500u2500 config/       # Configuration de l'application
-u251cu2500u2500 contexts/     # Contextes React pour l'état global
-u251cu2500u2500 hooks/        # Hooks personnalisés
-u251cu2500u2500 lib/          # Bibliothèques et utilitaires
-u251cu2500u2500 pages/        # Composants de page
-u251cu2500u2500 types/        # Définitions de types TypeScript
-u251cu2500u2500 utils/        # Fonctions utilitaires
-u2514u2500u2500 App.tsx       # Point d'entrée de l'application
-```
-
-## À propos de Penda
-
-Penda est une application de surveillance industrielle intelligente qui utilise l'apprentissage automatique pour détecter les anomalies dans les équipements industriels en temps réel.
-
-Conçue pour maximiser l'efficacité opérationnelle et minimiser les temps d'arrêt, Penda analyse en continu les données provenant des capteurs industriels pour identifier les comportements anormaux avant qu'ils ne deviennent des problèmes critiques.
-
-### Cas d'utilisation
-
-- **Maintenance prédictive** : Détection précoce des défaillances d'équipement
-- **Optimisation des processus** : Analyse des performances pour améliorer l'efficacité
-- **Contrôle qualité** : Identification des écarts dans les processus de production
-- **Sécurité** : Alertes en temps réel pour les conditions dangereuses
+Pour contribuer au projet, veuillez suivre les directives de contribution (à définir).
 
 ## Licence
 
-[MIT](LICENSE)
-
----
-
-© 2025 Penda Technologies. Tous droits réservés.
+Ce projet est sous licence [Nom de la Licence, ex: MIT]. Voir le fichier `LICENSE` pour plus de détails.

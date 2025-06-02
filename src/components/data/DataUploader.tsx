@@ -47,7 +47,6 @@ export const DataUploader = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
-
     setFile(selectedFile);
     parseFile(selectedFile);
   };
@@ -90,7 +89,6 @@ export const DataUploader = () => {
       }
       
       setPreviewData(data);
-
       // Automapping des colonnes si possible
       const newMapping = { ...mapping };
       const lowerColumns = columns.map(c => c.toLowerCase());
@@ -151,6 +149,30 @@ export const DataUploader = () => {
     }));
   };
 
+  // Fonction utilitaire pour convertir TimestampedSensorData en tableau de nombres
+  const convertToNumericArray = (data: TimestampedSensorData[]): number[][] => {
+    return data.map(item => [
+      item.temperature,
+      item.pressure,
+      item.vibration,
+      item.rotation,
+      item.current,
+      item.voltage
+    ]);
+  };
+
+  // Fonction utilitaire pour convertir une seule donnée en tableau de nombres
+  const convertSingleToNumericArray = (data: TimestampedSensorData): number[] => {
+    return [
+      data.temperature,
+      data.pressure,
+      data.vibration,
+      data.rotation,
+      data.current,
+      data.voltage
+    ];
+  };
+
   // Traite les données pour entraîner le modèle
   const handleProcessData = async () => {
     if (!file || !previewData.length) {
@@ -177,7 +199,6 @@ export const DataUploader = () => {
     }
 
     setIsLoading(true);
-
     try {
       const text = await file.text();
       let data: Record<string, string | number>[] = [];
@@ -257,8 +278,11 @@ export const DataUploader = () => {
         throw new Error("Aucune donnée valide après conversion");
       }
 
-      // Entraîne le modèle sur les données valides
-      await trainModel(validData);
+      // Convertit les données en format numérique pour l'entraînement du modèle
+      const numericData = convertToNumericArray(validData);
+      
+      // Entraîne le modèle sur les données numériques
+      await trainModel(numericData);
 
       toast({
         title: "Traitement terminé",
@@ -266,7 +290,9 @@ export const DataUploader = () => {
       });
 
       // Fait une prédiction sur la première ligne à titre d'exemple
-      await predict(validData[0]);
+      const firstDataAsNumbers = convertSingleToNumericArray(validData[0]);
+      await predict(firstDataAsNumbers);
+
     } catch (error) {
       console.error('Erreur lors du traitement des données :', error);
       toast({

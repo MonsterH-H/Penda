@@ -372,7 +372,7 @@ export const DataUploader = () => {
                     <tr key={i}>
                       {columns.map((column, j) => (
                         <td key={j} className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                          {row[column]}
+                          {String(row[column])}
                         </td>
                       ))}
                     </tr>

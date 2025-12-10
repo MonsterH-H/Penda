@@ -370,6 +370,7 @@ export const DataUploader = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {previewData.map((row, i) => (
                     <tr key={i}>
+              
                       {columns.map((column, j) => (
                         <td key={j} className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
                           {String(row[column])}
